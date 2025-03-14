@@ -1,0 +1,186 @@
+---
+title: "Parallel Computing"
+author: "Khethani Mugeri"
+output: "html_document"
+---
+
+## Parallel Computing Prac
+
+Question 1
+
+```{r}
+library(foreach)
+library(parallel)
+library(doParallel)
+library(MASS)
+library(iterators)
+
+
+#Generting a exponential distribution sample
+dataset <- rexp(100, rate = 1)
+n <- length(dataset)
+
+# Set up parallel backend to use many processors
+Cores <- detectCores()
+clusters <- makeCluster(Cores-1)
+registerDoParallel(clusters)
+
+#Parallel computation
+results <- foreach(i = 1:n, .combine = rbind) %dopar% {
+  dataset <- rexp(n, rate = 1)  
+  mean_dataset <- mean(dataset)     
+  var_dataset <- (sd(dataset))^2  
+  c(Mean = mean_dataset, Variance = var_dataset) 
+}
+rownames(results) <- paste0("Result_", 1:100)
+# Stop the parallel Computation
+stopCluster(clusters)
+```
+
+Question 2
+
+```{r}
+
+# Serial bootstrapping
+dataset2 <- galaxies  #load the dataset
+N <- length(dataset2)
+tobs <- median(dataset2) # T(X)
+B <- 1000
+tboot <- numeric(B)
+for (j in B) {
+  samp <- sample(dataset2, 82, replace = TRUE)
+  tboot[j] <- median(samp)
+}
+
+#checking the system time for serial bootstrapping
+system.time({
+  tboot <- numeric(B)
+  for (j in B) {
+    samp <- sample(dataset2, 82, replace = TRUE)
+    tboot[j] <- median(samp)
+  }
+})
+
+# Set up parallel backend to use many processors
+Cores <- detectCores()
+clusters <- makeCluster(Cores-1)
+registerDoParallel(clusters)
+
+# Bootstrapping using parallel computing
+boot_medians <- foreach(i = 1:B, .combine = c, .packages = "MASS") %dopar% {
+  sample_data <- sample(dataset2, N , replace = TRUE)  
+  median(sample_data)  
+} 
+
+#Checking the system time for parallel computing 
+system.time({
+  boot_medians <- foreach(i = 1:B, .combine = c, .packages = "MASS") %dopar% {
+    sample_data <- sample(dataset2, N , replace = TRUE)  
+    median(sample_data) 
+  }
+})
+
+# Stop parallel backend
+stopCluster(clusters)
+```
+
+So the system run time for parallel bootstrapping is high because bootstrap is a simple process and it does not need to speed up thus parallel bootstrappingwill take longer than serial bootstrapping
+
+Question 3
+
+```{r}
+
+# Set up parallel backend to use many processors
+Cores <- detectCores()
+clusters <- makeCluster(Cores-1)
+registerDoParallel(clusters)
+
+dataset3 <- rexp(50, rate = 1)
+b <- 1000
+true_mean <- 1
+
+coverage_count <- 0
+boot_means <- numeric(B)
+
+coverage <- foreach(i = 1:b, .combine = '+') %dopar% {
+  dataset3 <- rexp(50, rate = 1)
+  boot_means <- replicate(b, mean(sample(dataset3,
+                                      replace = TRUE  )))
+  perc_CI <- quantile(boot_means, c(0.025, 0.975))
+
+  if (perc_CI[1] <- true_mean &i& perc_CI[2] >- true_mean)  {
+  return (1)
+  }else {
+   return (0)
+  }
+}
+coverage_prob <- coverage / b
+
+print(paste ( "Predicted coverage probability:", round(coverage_prob, 3)))
+stopCluster(clusters)
+```
+
+Question 4
+
+```{r}
+
+# Set up parallel backend to use many processors
+Cores <- detectCores()
+clusters <- makeCluster(Cores-1)
+registerDoParallel(clusters)
+
+# Set seed for reproducibility
+set.seed(1234)
+no_random_var <- 5
+no_of_vec <- 3
+
+# Create an iterator 
+iter <- irnorm(3, 5)
+
+# Use foreach to find the largest value in each vector
+max_values <- foreach(i = 1:3, vec = iter, .combine = c) %do% {
+  max(vec)  
+}
+
+
+print(max_values)
+
+stopCluster(clusters)
+```
+
+Question 5
+
+```{r}
+set.seed(1234)
+
+# 1. Using parLapply (parallel computing)
+Cores <- detectCores()
+clusters <- makeCluster(Cores - 1)
+registerDoParallel(clusters)
+
+system.time({
+  max_values <- parLapply(clusters, 1:3, function(i) {
+    max(rnorm(5))  
+  })
+})
+
+stopCluster(clusters)
+
+# 2. Using foreach 
+Cores <- detectCores()
+clusters <- makeCluster(Cores - 1)
+registerDoParallel(clusters)
+
+system.time({
+  max_values <- foreach(i = 1:3, vec = iter, .combine = c) %do% {
+    max(vec)  
+  }
+})
+
+stopCluster(clusters)
+
+# 3. Using replicate (serial processing)
+system.time({
+  replicate_result <- replicate(3, max(rnorm(5)))
+})
+```
