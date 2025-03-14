@@ -5,7 +5,7 @@ output: "html_document"
 ---
 
 ## Parallel Computing Prac
-
+https://github.com/KHETMAN101/Statistical-Computing-Assignment-2
 Question 1
 
 ```{r}
